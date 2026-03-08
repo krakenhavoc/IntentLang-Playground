@@ -362,7 +362,11 @@ async function runGenerate() {
   btnGenerate.disabled = true;
   btnGenerate.textContent = "Generating...";
   try {
-    const source = await generate(prompt);
+    const source = await generate(
+      prompt,
+      isReady() ? checkSource : null,
+      (status) => { btnGenerate.textContent = status; },
+    );
     setEditorValue(specEditor, source);
     currentSource = source;
     currentExample = null;
