@@ -56,9 +56,10 @@ async function proxyApi(req, res, apiBase) {
   for await (const chunk of req) chunks.push(chunk);
   const body = Buffer.concat(chunks);
 
-  // Forward headers (except host)
+  // Forward headers (strip proxy-specific and host headers)
   const headers = { ...req.headers };
   delete headers.host;
+  delete headers["x-api-base"];
   headers["content-length"] = body.length;
 
   try {
@@ -85,10 +86,11 @@ async function proxyApi(req, res, apiBase) {
 
 const server = createServer(async (req, res) => {
   if (req.url.startsWith("/api/")) {
-    const apiBase = process.env.AI_API_BASE;
+    // Read target from X-Api-Base header (set by browser), fall back to env var
+    const apiBase = req.headers["x-api-base"] || process.env.AI_API_BASE;
     if (!apiBase) {
       res.writeHead(503);
-      res.end(JSON.stringify({ error: "AI_API_BASE not configured. Start server with AI_API_BASE=http://..." }));
+      res.end(JSON.stringify({ error: "No API base configured. Enter your API URL in the settings (gear icon)." }));
       return;
     }
     await proxyApi(req, res, apiBase.replace(/\/$/, ""));
@@ -99,9 +101,5 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`IntentLang Playground: http://localhost:${PORT}`);
-  if (process.env.AI_API_BASE) {
-    console.log(`  AI proxy: /api/* -> ${process.env.AI_API_BASE}`);
-  } else {
-    console.log(`  AI proxy: disabled (set AI_API_BASE to enable)`);
-  }
+  console.log(`  AI proxy: /api/* (reads target from X-Api-Base header or AI_API_BASE env)`);
 });

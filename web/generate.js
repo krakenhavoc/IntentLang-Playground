@@ -14,7 +14,7 @@ export function saveSettings(settings) {
 
 export function hasApiKey() {
   const s = loadSettings();
-  return !!(s.apiKey && s.apiKey.trim());
+  return !!(s.apiBase && s.apiBase.trim());
 }
 
 const SYSTEM_PROMPT = `You are an expert in IntentLang, a declarative specification language. Generate valid .intent specs from natural language descriptions.
@@ -35,30 +35,24 @@ Return ONLY the .intent source code, no markdown fences or explanation.`;
 
 export async function generate(prompt) {
   const settings = loadSettings();
-  if (!settings.apiKey) {
-    throw new Error("No API key configured. Click the gear icon to add one.");
+  if (!settings.apiBase) {
+    throw new Error("No API URL configured. Click the gear icon to add one.");
   }
 
-  const configuredBase = (settings.apiBase || "https://api.openai.com/v1").replace(/\/$/, "");
+  const configuredBase = settings.apiBase.replace(/\/$/, "");
   const model = settings.model || "gpt-4o";
 
-  // Use /api proxy for local development to avoid CORS issues.
-  // If the base is an absolute URL, route through the proxy;
-  // if it's already a relative path (like /api/v1), use it directly.
-  let base = configuredBase;
-  if (configuredBase.startsWith("http")) {
-    // Rewrite to use the local proxy: the dev server forwards /api/* to AI_API_BASE
-    base = "/api";
-  }
-
+  // Route through /api proxy to avoid CORS. The proxy reads X-Api-Base
+  // to know where to forward the request.
   const headers = {
     "Content-Type": "application/json",
+    "X-Api-Base": configuredBase,
   };
   if (settings.apiKey) {
     headers["Authorization"] = `Bearer ${settings.apiKey}`;
   }
 
-  const response = await fetch(`${base}/chat/completions`, {
+  const response = await fetch("/api/chat/completions", {
     method: "POST",
     headers,
     body: JSON.stringify({
