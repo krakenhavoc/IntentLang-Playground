@@ -3,6 +3,8 @@
 build: build-wasm build-editor
 
 build-wasm:
+	rustup target add wasm32-unknown-unknown
+	which wasm-pack || cargo install wasm-pack
 	cd crates/playground-wasm && wasm-pack build --target web --out-dir ../../web/pkg
 
 build-editor:
