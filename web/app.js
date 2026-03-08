@@ -1,4 +1,4 @@
-import { createEditor, createJsonEditor, setEditorValue } from "./editor.js";
+import { createEditor, createJsonEditor, setEditorValue } from "./editor.bundle.js";
 import { initWasm, checkSource, executeAction, inspectModule, formatSource, isReady } from "./runtime.js";
 import { EXAMPLES } from "./examples.js";
 import { loadSettings, saveSettings, hasApiKey, generate } from "./generate.js";

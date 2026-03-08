@@ -1,7 +1,7 @@
 target/
-pkg/
+web/pkg/
 node_modules/
-*.wasm
 dist/
 .DS_Store
 playground.md
+web/editor.bundle.js

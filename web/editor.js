@@ -1,7 +1,7 @@
-import { basicSetup, EditorView } from "https://esm.sh/codemirror@6.0.1";
-import { EditorState } from "https://esm.sh/@codemirror/state@6.5.2";
-import { StreamLanguage } from "https://esm.sh/@codemirror/language@6.11.0";
-import { json as jsonLang } from "https://esm.sh/@codemirror/lang-json@6.0.1";
+import { basicSetup, EditorView } from "codemirror";
+import { EditorState } from "@codemirror/state";
+import { StreamLanguage } from "@codemirror/language";
+import { json as jsonLang } from "@codemirror/lang-json";
 
 const KEYWORDS = new Set([
   "module", "entity", "action", "invariant", "edge_cases",
