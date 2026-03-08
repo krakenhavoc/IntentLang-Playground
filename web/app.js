@@ -118,8 +118,11 @@ function enableUI() {
   btnCheck.disabled = false;
   btnFormat.disabled = false;
   btnExecute.disabled = false;
-  btnCodegen.disabled = false;
-  btnOpenapi.disabled = false;
+}
+
+function setCodegenEnabled(enabled) {
+  btnCodegen.disabled = !enabled;
+  btnOpenapi.disabled = !enabled;
 }
 
 // Source change handler (debounced check)
@@ -139,11 +142,13 @@ function runCheck() {
   if (result.ok) {
     diagnosticsEl.textContent = "No errors";
     diagnosticsEl.className = "diagnostics ok";
+    setCodegenEnabled(true);
     updateModuleInfo();
   } else {
     const msgs = result.diagnostics.map((d) => d.message).join("; ");
     diagnosticsEl.textContent = msgs;
     diagnosticsEl.className = "diagnostics err";
+    setCodegenEnabled(false);
     // Still try to show module info if we got a module name
     if (result.module_name) {
       updateModuleInfo();
