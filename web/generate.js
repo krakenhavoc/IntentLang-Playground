@@ -73,8 +73,27 @@ export async function generate(prompt) {
   const data = await response.json();
   let content = data.choices?.[0]?.message?.content || "";
 
-  // Strip markdown fences if present
-  content = content.replace(/^```\w*\n?/, "").replace(/\n?```$/, "").trim();
+  // Extract intent source from LLM response.
+  // LLMs often add explanatory text before/after fences despite instructions.
+  content = extractIntentSource(content);
 
   return content;
+}
+
+function extractIntentSource(raw) {
+  const trimmed = raw.trim();
+
+  // Try to extract from a fenced code block anywhere in the output
+  const fenceMatch = trimmed.match(/```\w*\n([\s\S]*?)```/);
+  if (fenceMatch) {
+    return fenceMatch[1].trim();
+  }
+
+  // No fences — if there's text before "module", strip it
+  const moduleIdx = trimmed.search(/^module\s/m);
+  if (moduleIdx > 0) {
+    return trimmed.slice(moduleIdx).trim();
+  }
+
+  return trimmed;
 }
