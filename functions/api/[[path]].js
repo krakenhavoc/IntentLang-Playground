@@ -4,11 +4,23 @@
 export async function onRequest(context) {
   const { request } = context;
 
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Api-Base",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
   const apiBase = request.headers.get("X-Api-Base");
   if (!apiBase) {
     return new Response(
       JSON.stringify({ error: "No API base configured. Enter your API URL in the settings (gear icon)." }),
-      { status: 503, headers: { "Content-Type": "application/json" } },
+      { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
     );
   }
 
@@ -17,10 +29,13 @@ export async function onRequest(context) {
   const targetPath = url.pathname.replace(/^\/api/, "");
   const targetUrl = `${apiBase.replace(/\/$/, "")}${targetPath}${url.search}`;
 
-  // Forward headers, stripping proxy-specific and host headers
-  const headers = new Headers(request.headers);
-  headers.delete("X-Api-Base");
-  headers.set("Host", new URL(targetUrl).host);
+  // Only forward essential headers — strip browser-specific headers
+  // that cause upstream APIs to reject requests
+  const headers = new Headers();
+  const authorization = request.headers.get("Authorization");
+  if (authorization) headers.set("Authorization", authorization);
+  headers.set("Content-Type", request.headers.get("Content-Type") || "application/json");
+  headers.set("Accept", "application/json");
 
   try {
     const response = await fetch(targetUrl, {
@@ -40,7 +55,7 @@ export async function onRequest(context) {
   } catch (e) {
     return new Response(
       JSON.stringify({ error: `Proxy error: ${e.message}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } },
+      { status: 502, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
     );
   }
 }
