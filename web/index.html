@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntentLang Playground</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>IntentLang Playground</h1>
+      <span class="status" id="status">Loading WASM...</span>
+    </div>
+    <div class="header-right">
+      <select id="examples-select">
+        <option value="">-- Examples --</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div class="panel-left">
+      <div class="editor-container">
+        <div id="editor"></div>
+      </div>
+      <div class="editor-toolbar">
+        <button id="btn-check" disabled>Check</button>
+        <button id="btn-format" disabled>Format</button>
+        <div class="diagnostics" id="diagnostics"></div>
+      </div>
+    </div>
+
+    <div class="panel-right">
+      <div class="section" id="module-info-section">
+        <h2>Module Info</h2>
+        <div id="module-info" class="placeholder">Write or load a spec to see module info</div>
+      </div>
+
+      <div class="section" id="request-section">
+        <h2>Request Builder</h2>
+        <div class="request-controls">
+          <select id="action-select" disabled>
+            <option value="">-- Select Action --</option>
+          </select>
+          <div class="request-sub-examples" id="sub-examples"></div>
+        </div>
+        <div id="request-editor"></div>
+        <button id="btn-execute" disabled>Execute</button>
+      </div>
+
+      <div class="section" id="response-section">
+        <h2>Response</h2>
+        <div id="response" class="placeholder">Execute an action to see the result</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="generate-bar">
+      <div class="generate-input-wrap">
+        <input type="text" id="generate-input" placeholder="Describe what you want..." disabled>
+        <button id="btn-generate" disabled>Generate</button>
+      </div>
+      <button id="btn-settings" class="icon-btn" title="AI Settings">&#9881;</button>
+    </div>
+  </footer>
+
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>AI Generation Settings</h2>
+      <p class="settings-note">Your API key stays in your browser (localStorage). It is never sent anywhere except the API endpoint you configure.</p>
+      <label>API Base URL
+        <input type="text" id="setting-api-base" placeholder="https://api.openai.com/v1">
+      </label>
+      <label>API Key
+        <input type="password" id="setting-api-key" placeholder="sk-...">
+      </label>
+      <label>Model
+        <input type="text" id="setting-model" placeholder="gpt-4o">
+      </label>
+      <div class="modal-actions">
+        <button id="btn-settings-save">Save</button>
+        <button id="btn-settings-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
