@@ -16,9 +16,12 @@ make serve
 ## Build
 
 ```bash
-make build    # compile WASM to web/pkg/
+make build    # compile WASM + bundle CodeMirror
 make clean    # remove build artifacts
-make serve    # build + serve on localhost:8080
+make serve    # build + dev server on localhost:8080
+
+# With AI generation proxy (any OpenAI-compatible API):
+AI_API_BASE=http://localhost:11434/v1 make serve
 ```
 
 ## Architecture

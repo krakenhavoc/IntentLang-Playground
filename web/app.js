@@ -356,7 +356,7 @@ function updateGenerateUI() {
   generateInput.disabled = !enabled;
   btnGenerate.disabled = !enabled;
   if (!enabled) {
-    generateInput.placeholder = "Add your API key in settings to enable AI generation";
+    generateInput.placeholder = "Configure your API URL in settings to enable AI generation";
   } else {
     generateInput.placeholder = "Describe what you want...";
   }

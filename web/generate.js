@@ -14,7 +14,7 @@ export function saveSettings(settings) {
 
 export function hasApiKey() {
   const s = loadSettings();
-  return !!(s.apiKey && s.apiKey.trim());
+  return !!(s.apiBase && s.apiBase.trim());
 }
 
 const SYSTEM_PROMPT = `You are an expert in IntentLang, a declarative specification language. Generate valid .intent specs from natural language descriptions.
@@ -35,19 +35,26 @@ Return ONLY the .intent source code, no markdown fences or explanation.`;
 
 export async function generate(prompt) {
   const settings = loadSettings();
-  if (!settings.apiKey) {
-    throw new Error("No API key configured. Click the gear icon to add one.");
+  if (!settings.apiBase) {
+    throw new Error("No API URL configured. Click the gear icon to add one.");
   }
 
-  const base = (settings.apiBase || "https://api.openai.com/v1").replace(/\/$/, "");
+  const configuredBase = settings.apiBase.replace(/\/$/, "");
   const model = settings.model || "gpt-4o";
 
-  const response = await fetch(`${base}/chat/completions`, {
+  // Route through /api proxy to avoid CORS. The proxy reads X-Api-Base
+  // to know where to forward the request.
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Api-Base": configuredBase,
+  };
+  if (settings.apiKey) {
+    headers["Authorization"] = `Bearer ${settings.apiKey}`;
+  }
+
+  const response = await fetch("/api/chat/completions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${settings.apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages: [

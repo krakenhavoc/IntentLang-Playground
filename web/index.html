@@ -69,11 +69,11 @@
   <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
       <h2>AI Generation Settings</h2>
-      <p class="settings-note">Your API key stays in your browser (localStorage). It is never sent anywhere except the API endpoint you configure.</p>
-      <label>API Base URL
-        <input type="text" id="setting-api-base" placeholder="https://api.openai.com/v1">
+      <p class="settings-note">Settings stay in your browser (localStorage). Requests are proxied through the dev server to avoid CORS.</p>
+      <label>API Base URL (required)
+        <input type="text" id="setting-api-base" placeholder="http://localhost:11434/v1">
       </label>
-      <label>API Key
+      <label>API Key (optional for local models)
         <input type="password" id="setting-api-key" placeholder="sk-...">
       </label>
       <label>Model
