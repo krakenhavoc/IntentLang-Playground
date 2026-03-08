@@ -26,6 +26,21 @@ export function formatSource(source) {
   return wasm.fmt(source);
 }
 
+export function generateCode(source, lang) {
+  if (!wasm) throw new Error("WASM not loaded");
+  return JSON.parse(wasm.codegen(source, lang));
+}
+
+export function generateOpenApi(source) {
+  if (!wasm) throw new Error("WASM not loaded");
+  return JSON.parse(wasm.openapi(source));
+}
+
+export function generateTestHarness(source, lang) {
+  if (!wasm) throw new Error("WASM not loaded");
+  return JSON.parse(wasm.test_harness(source, lang));
+}
+
 export function isReady() {
   return wasm !== null;
 }

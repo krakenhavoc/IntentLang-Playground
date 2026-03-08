@@ -53,6 +53,28 @@
         <h2>Response</h2>
         <div id="response" class="placeholder">Execute an action to see the result</div>
       </div>
+
+      <div class="section" id="codegen-section">
+        <h2>Code Generation</h2>
+        <div class="codegen-controls">
+          <select id="codegen-lang">
+            <option value="rust">Rust</option>
+            <option value="typescript">TypeScript</option>
+            <option value="python">Python</option>
+            <option value="go">Go</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+            <option value="swift">Swift</option>
+          </select>
+          <button id="btn-codegen" disabled>Generate Skeleton</button>
+          <button id="btn-openapi" disabled>OpenAPI Spec</button>
+        </div>
+        <div class="codegen-tabs hidden" id="codegen-tabs">
+          <button class="codegen-tab active" data-tab="code">Code</button>
+          <button class="codegen-tab" data-tab="openapi">OpenAPI</button>
+        </div>
+        <div id="codegen-output" class="placeholder">Generate skeleton code or an OpenAPI spec from your intent file</div>
+      </div>
     </div>
   </main>
 

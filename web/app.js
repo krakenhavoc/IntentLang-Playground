@@ -1,5 +1,5 @@
 import { createEditor, createJsonEditor, setEditorValue } from "./editor.bundle.js";
-import { initWasm, checkSource, executeAction, inspectModule, formatSource, isReady } from "./runtime.js";
+import { initWasm, checkSource, executeAction, inspectModule, formatSource, generateCode, generateOpenApi, isReady } from "./runtime.js";
 import { EXAMPLES } from "./examples.js";
 import { loadSettings, saveSettings, hasApiKey, generate } from "./generate.js";
 
@@ -20,6 +20,11 @@ const btnSettings = document.getElementById("btn-settings");
 const settingsModal = document.getElementById("settings-modal");
 const btnSettingsSave = document.getElementById("btn-settings-save");
 const btnSettingsCancel = document.getElementById("btn-settings-cancel");
+const codegenLangEl = document.getElementById("codegen-lang");
+const btnCodegen = document.getElementById("btn-codegen");
+const btnOpenapi = document.getElementById("btn-openapi");
+const codegenTabsEl = document.getElementById("codegen-tabs");
+const codegenOutputEl = document.getElementById("codegen-output");
 
 // State
 let specEditor = null;
@@ -28,6 +33,8 @@ let currentSource = "";
 let currentModuleInfo = null;
 let currentExample = null;
 let checkTimer = null;
+let codegenResults = { code: null, openapi: null };
+let activeCodegenTab = "code";
 
 // Initialize
 async function init() {
@@ -97,12 +104,22 @@ async function init() {
   btnSettingsCancel.addEventListener("click", () => {
     settingsModal.classList.add("hidden");
   });
+
+  // Codegen
+  btnCodegen.addEventListener("click", runCodegen);
+  btnOpenapi.addEventListener("click", runOpenapi);
+  codegenTabsEl.addEventListener("click", (e) => {
+    const tab = e.target.dataset?.tab;
+    if (tab) switchCodegenTab(tab);
+  });
 }
 
 function enableUI() {
   btnCheck.disabled = false;
   btnFormat.disabled = false;
   btnExecute.disabled = false;
+  btnCodegen.disabled = false;
+  btnOpenapi.disabled = false;
 }
 
 // Source change handler (debounced check)
@@ -312,8 +329,12 @@ function loadExample(index) {
   setEditorValue(specEditor, currentExample.source);
   currentSource = currentExample.source;
 
-  // Clear response
+  // Clear response and codegen
   responseEl.innerHTML = '<span class="placeholder">Execute an action to see the result</span>';
+  codegenResults = { code: null, openapi: null };
+  codegenTabsEl.classList.add("hidden");
+  codegenOutputEl.innerHTML = '<span class="placeholder">Generate skeleton code or an OpenAPI spec from your intent file</span>';
+  codegenOutputEl.classList.add("placeholder");
 
   // Run check + update module info
   if (isReady()) {
@@ -368,6 +389,67 @@ function openSettings() {
   document.getElementById("setting-api-key").value = s.apiKey || "";
   document.getElementById("setting-model").value = s.model || "";
   settingsModal.classList.remove("hidden");
+}
+
+// Codegen
+function runCodegen() {
+  currentSource = specEditor.state.doc.toString();
+  const lang = codegenLangEl.value;
+  const result = generateCode(currentSource, lang);
+
+  if (!result.ok) {
+    codegenOutputEl.innerHTML = `<div class="response-fail"><pre>${escapeHtml(result.error)}</pre></div>`;
+    codegenOutputEl.classList.remove("placeholder");
+    return;
+  }
+
+  codegenResults.code = { code: result.code, filename: result.filename, lang };
+  showCodegenTabs();
+  switchCodegenTab("code");
+}
+
+function runOpenapi() {
+  currentSource = specEditor.state.doc.toString();
+  const result = generateOpenApi(currentSource);
+
+  if (!result.ok) {
+    codegenOutputEl.innerHTML = `<div class="response-fail"><pre>${escapeHtml(result.error)}</pre></div>`;
+    codegenOutputEl.classList.remove("placeholder");
+    return;
+  }
+
+  codegenResults.openapi = JSON.stringify(result.spec, null, 2);
+  showCodegenTabs();
+  switchCodegenTab("openapi");
+}
+
+function showCodegenTabs() {
+  if (codegenResults.code || codegenResults.openapi) {
+    codegenTabsEl.classList.remove("hidden");
+  }
+}
+
+function switchCodegenTab(tab) {
+  activeCodegenTab = tab;
+  codegenTabsEl.querySelectorAll(".codegen-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.tab === tab);
+  });
+
+  if (tab === "code" && codegenResults.code) {
+    const { code, filename, lang } = codegenResults.code;
+    const langLabel = { rust: "Rust", typescript: "TypeScript", python: "Python", go: "Go", java: "Java", csharp: "C#", swift: "Swift" }[lang] || lang;
+    codegenOutputEl.innerHTML =
+      `<div class="codegen-header"><span class="codegen-filename">${escapeHtml(filename)}</span><span class="codegen-lang-label">${langLabel}</span></div>` +
+      `<pre class="codegen-code">${escapeHtml(code)}</pre>`;
+    codegenOutputEl.classList.remove("placeholder");
+  } else if (tab === "openapi" && codegenResults.openapi) {
+    codegenOutputEl.innerHTML =
+      `<div class="codegen-header"><span class="codegen-filename">openapi.json</span><span class="codegen-lang-label">OpenAPI 3.0</span></div>` +
+      `<pre class="codegen-code">${escapeHtml(codegenResults.openapi)}</pre>`;
+    codegenOutputEl.classList.remove("placeholder");
+  } else {
+    codegenOutputEl.innerHTML = '<span class="placeholder">Generate skeleton code or an OpenAPI spec from your intent file</span>';
+  }
 }
 
 function escapeHtml(s) {
