@@ -11,5 +11,7 @@ build-editor:
 clean:
 	rm -rf crates/playground-wasm/target web/pkg web/editor.bundle.js
 
+# Dev server with AI proxy. Set AI_API_BASE for generation feature:
+#   AI_API_BASE=http://localhost:11434/v1 make serve
 serve: build
-	cd web && npx -y serve -l 8080
+	node server.mjs

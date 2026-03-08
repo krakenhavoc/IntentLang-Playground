@@ -39,15 +39,28 @@ export async function generate(prompt) {
     throw new Error("No API key configured. Click the gear icon to add one.");
   }
 
-  const base = (settings.apiBase || "https://api.openai.com/v1").replace(/\/$/, "");
+  const configuredBase = (settings.apiBase || "https://api.openai.com/v1").replace(/\/$/, "");
   const model = settings.model || "gpt-4o";
+
+  // Use /api proxy for local development to avoid CORS issues.
+  // If the base is an absolute URL, route through the proxy;
+  // if it's already a relative path (like /api/v1), use it directly.
+  let base = configuredBase;
+  if (configuredBase.startsWith("http")) {
+    // Rewrite to use the local proxy: the dev server forwards /api/* to AI_API_BASE
+    base = "/api";
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (settings.apiKey) {
+    headers["Authorization"] = `Bearer ${settings.apiKey}`;
+  }
 
   const response = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${settings.apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages: [
