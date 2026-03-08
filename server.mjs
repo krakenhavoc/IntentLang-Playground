@@ -56,10 +56,11 @@ async function proxyApi(req, res, apiBase) {
   for await (const chunk of req) chunks.push(chunk);
   const body = Buffer.concat(chunks);
 
-  // Forward headers (strip proxy-specific and host headers)
+  // Forward headers (strip proxy-specific, host, and encoding headers)
   const headers = { ...req.headers };
   delete headers.host;
   delete headers["x-api-base"];
+  delete headers["accept-encoding"];
   headers["content-length"] = body.length;
 
   try {
@@ -69,15 +70,21 @@ async function proxyApi(req, res, apiBase) {
       body: req.method !== "GET" && req.method !== "HEAD" ? body : undefined,
     });
 
-    // Forward response
+    // Forward response headers, stripping hop-by-hop headers.
+    // Node's fetch auto-decompresses gzip, so content-encoding and
+    // content-length from the upstream no longer match the body we send.
+    const hopByHop = new Set([
+      "content-encoding", "transfer-encoding", "content-length", "connection",
+    ]);
     const responseHeaders = {};
     response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
+      if (!hopByHop.has(key)) responseHeaders[key] = value;
     });
 
+    const responseBody = Buffer.from(await response.arrayBuffer());
+    responseHeaders["content-length"] = responseBody.length;
     res.writeHead(response.status, responseHeaders);
-    const responseBody = await response.arrayBuffer();
-    res.end(Buffer.from(responseBody));
+    res.end(responseBody);
   } catch (e) {
     res.writeHead(502);
     res.end(JSON.stringify({ error: `Proxy error: ${e.message}` }));
