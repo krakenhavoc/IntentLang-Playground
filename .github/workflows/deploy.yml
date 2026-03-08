@@ -39,7 +39,9 @@ jobs:
         run: npm ci
 
       - name: Build WASM
-        run: cd crates/playground-wasm && wasm-pack build --target web --out-dir ../../web/pkg
+        run: |
+          cd crates/playground-wasm && wasm-pack build --target web --out-dir ../../web/pkg
+          rm -f ../../web/pkg/.gitignore
 
       - name: Build editor bundle
         run: npx esbuild web/editor.js --bundle --format=esm --outfile=web/editor.bundle.js
