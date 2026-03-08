@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 use wasm_bindgen::prelude::*;
 
 use intent_check::check_file;
+use intent_codegen::{self, Language};
 use intent_ir::lower_file;
 use intent_parser::parse_file;
 use intent_render::format::format;
@@ -141,6 +142,85 @@ pub fn fmt(source: &str) -> String {
     match parse_file(source) {
         Ok(f) => format(&f),
         Err(_) => source.to_string(),
+    }
+}
+
+/// Generate skeleton code from a .intent source for the given language.
+/// `lang` must be one of: rust, typescript, python, go, java, csharp, swift.
+/// Returns JSON: { ok: true, code: "...", filename: "..." } or { ok: false, error: "..." }.
+#[wasm_bindgen]
+pub fn codegen(source: &str, lang: &str) -> String {
+    let language = match parse_language(lang) {
+        Some(l) => l,
+        None => return json!({"ok": false, "error": format!("unknown language: {lang}")}).to_string(),
+    };
+
+    let file = match parse_file(source) {
+        Ok(f) => f,
+        Err(e) => return json!({"ok": false, "error": e.message}).to_string(),
+    };
+
+    let errors = check_file(&file);
+    if !errors.is_empty() {
+        let msgs: Vec<String> = errors.iter().map(|e| format!("{e}")).collect();
+        return json!({"ok": false, "error": msgs.join("; ")}).to_string();
+    }
+
+    let code = intent_codegen::generate(&file, language);
+    let filename = intent_codegen::output_filename(&file.module.name, language);
+    json!({"ok": true, "code": code, "filename": filename}).to_string()
+}
+
+/// Generate an OpenAPI 3.0 spec from a .intent source.
+/// Returns JSON: { ok: true, spec: {...} } or { ok: false, error: "..." }.
+#[wasm_bindgen]
+pub fn openapi(source: &str) -> String {
+    let file = match parse_file(source) {
+        Ok(f) => f,
+        Err(e) => return json!({"ok": false, "error": e.message}).to_string(),
+    };
+
+    let errors = check_file(&file);
+    if !errors.is_empty() {
+        let msgs: Vec<String> = errors.iter().map(|e| format!("{e}")).collect();
+        return json!({"ok": false, "error": msgs.join("; ")}).to_string();
+    }
+
+    let spec = intent_codegen::openapi::generate(&file);
+    json!({"ok": true, "spec": spec}).to_string()
+}
+
+/// Generate a contract test harness from a .intent source.
+/// Currently only supports Rust. Returns JSON: { ok: true, code: "..." } or { ok: false, error: "..." }.
+#[wasm_bindgen]
+pub fn test_harness(source: &str, lang: &str) -> String {
+    let language = match parse_language(lang) {
+        Some(l) => l,
+        None => return json!({"ok": false, "error": format!("unknown language: {lang}")}).to_string(),
+    };
+
+    let file = match parse_file(source) {
+        Ok(f) => f,
+        Err(e) => return json!({"ok": false, "error": e.message}).to_string(),
+    };
+
+    let code = intent_codegen::test_harness::generate(&file, language);
+    if code.is_empty() {
+        return json!({"ok": false, "error": "no test blocks in spec (or language not yet supported)"}).to_string();
+    }
+    json!({"ok": true, "code": code}).to_string()
+}
+
+fn parse_language(lang: &str) -> Option<Language> {
+    match lang {
+        "rust" => Some(Language::Rust),
+        "typescript" => Some(Language::TypeScript),
+        "python" => Some(Language::Python),
+        "go" => Some(Language::Go),
+        "java" => Some(Language::Java),
+        "csharp" => Some(Language::CSharp),
+        "swift" => Some(Language::Swift),
+        _ => None,
     }
 }
 
