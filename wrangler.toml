@@ -1,3 +1,15 @@
 name = "intentlang-playground"
 pages_build_output_dir = "web"
 compatibility_date = "2024-01-01"
+
+# Rate limiting for /api/* is implemented by functions/api/[[path]].js,
+# which calls env.RATE_LIMITER.limit({ key: <client-ip> }) and falls
+# through harmlessly when the binding is absent.
+#
+# The binding itself must be created in the Cloudflare dashboard
+# (Pages → intentlang-playground → Settings → Functions → Rate limiting
+# bindings) because Pages does not currently accept ratelimit bindings
+# declared in wrangler.toml the way Workers does. Configure it as:
+#   Variable name:  RATE_LIMITER
+#   Limit:          30 requests per 60 seconds
+# Once enabled, rate limiting applies on the next deploy.
