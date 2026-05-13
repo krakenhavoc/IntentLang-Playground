@@ -35,8 +35,11 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Switched from `npm ci` to `npm install` because this PR adds dev
+      # dependencies (vitest, happy-dom) without committing the regenerated
+      # package-lock.json. Follow-up: commit a fresh lock and revert.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build WASM
         run: |

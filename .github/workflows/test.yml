@@ -1,0 +1,21 @@
+name: Web Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # Regenerates package-lock.json on the fly. The lock is intentionally
+      # not committed in this PR — follow-up will pin it. See deploy.yml.
+      - run: npm install --no-audit --no-fund
+      - run: npm test

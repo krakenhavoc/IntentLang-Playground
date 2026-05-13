@@ -2,6 +2,14 @@ import { createEditor, createJsonEditor, setEditorValue } from "./editor.bundle.
 import { initWasm, checkSource, executeAction, inspectModule, formatSource, generateCode, generateOpenApi, isReady } from "./runtime.js";
 import { EXAMPLES } from "./examples.js";
 import { loadSettings, saveSettings, hasApiKey, generate } from "./generate.js";
+import {
+  escapeHtml,
+  renderModuleInfo,
+  renderDiff,
+  renderViolations,
+  renderCodegenCode,
+  renderCodegenOpenapi,
+} from "./render.js";
 
 // DOM refs
 const statusEl = document.getElementById("status");
@@ -171,41 +179,10 @@ function updateModuleInfo() {
     return;
   }
 
-  let html = "";
-
-  // Entities
-  for (const entity of currentModuleInfo.entities) {
-    html += `<div class="module-entity">`;
-    html += `<span class="entity-name">entity ${entity.name}</span>`;
-    html += `<div class="field-list">`;
-    for (const f of entity.fields) {
-      html += `<div><span class="field-name">${f.name}</span>: <span class="field-type">${f.type}</span></div>`;
-    }
-    html += `</div></div>`;
-  }
-
-  // Actions
-  for (const action of currentModuleInfo.actions) {
-    html += `<div class="module-action">`;
-    html += `<span class="action-name">action ${action.name}</span>`;
-    html += `<div class="field-list">`;
-    for (const p of action.params) {
-      html += `<div><span class="field-name">${p.name}</span>: <span class="field-type">${p.type}</span></div>`;
-    }
-    html += `</div>`;
-    html += `<div class="counts">${action.precondition_count} requires, ${action.postcondition_count} ensures</div>`;
-    html += `</div>`;
-  }
-
-  // Invariants
-  for (const inv of currentModuleInfo.invariants) {
-    html += `<div class="module-invariant"><span class="invariant-name">invariant ${inv}</span></div>`;
-  }
-
-  moduleInfoEl.innerHTML = html;
+  moduleInfoEl.innerHTML = renderModuleInfo(currentModuleInfo);
   moduleInfoEl.classList.remove("placeholder");
 
-  // Update action dropdown
+  // Update action dropdown (textContent — safe by construction)
   actionSelectEl.innerHTML = '<option value="">-- Select Action --</option>';
   for (const action of currentModuleInfo.actions) {
     const opt = document.createElement("option");
@@ -276,55 +253,11 @@ function runExecute() {
   }
 
   if (result.ok) {
-    // Diff input vs output
     const diffHtml = renderDiff(requestJson.params, result.new_params);
     responseEl.innerHTML = `<div class="response-ok"><pre>${diffHtml}</pre></div>`;
   } else {
-    let html = '<div class="response-fail">';
-    for (const v of result.violations) {
-      html += `<div class="violation">`;
-      html += `<span class="violation-kind">${escapeHtml(v.kind)}</span> `;
-      html += escapeHtml(v.message);
-      html += `</div>`;
-    }
-    html += "</div>";
-    responseEl.innerHTML = html;
+    responseEl.innerHTML = renderViolations(result.violations);
   }
-}
-
-// Render diff between input and output params
-function renderDiff(inputParams, outputParams) {
-  const lines = [];
-  lines.push("{");
-  const keys = Object.keys(outputParams);
-  for (let ki = 0; ki < keys.length; ki++) {
-    const key = keys[ki];
-    const newVal = outputParams[key];
-    const oldVal = inputParams[key];
-    const comma = ki < keys.length - 1 ? "," : "";
-
-    if (typeof newVal === "object" && newVal !== null && typeof oldVal === "object" && oldVal !== null) {
-      lines.push(`  "${key}": {`);
-      const fieldKeys = Object.keys(newVal);
-      for (let fi = 0; fi < fieldKeys.length; fi++) {
-        const fk = fieldKeys[fi];
-        const fComma = fi < fieldKeys.length - 1 ? "," : "";
-        const nv = JSON.stringify(newVal[fk]);
-        const ov = oldVal[fk] !== undefined ? JSON.stringify(oldVal[fk]) : undefined;
-        if (ov !== undefined && ov !== nv) {
-          lines.push(`    <span class="old-value">"${fk}": ${escapeHtml(ov)}</span>`);
-          lines.push(`    <span class="new-value">"${fk}": ${escapeHtml(nv)}${fComma}</span>`);
-        } else {
-          lines.push(`    "${fk}": ${escapeHtml(nv)}${fComma}`);
-        }
-      }
-      lines.push(`  }${comma}`);
-    } else {
-      lines.push(`  "${key}": ${escapeHtml(JSON.stringify(newVal))}${comma}`);
-    }
-  }
-  lines.push("}");
-  return lines.join("\n");
 }
 
 // Load example
@@ -445,24 +378,14 @@ function switchCodegenTab(tab) {
   });
 
   if (tab === "code" && codegenResults.code) {
-    const { code, filename, lang } = codegenResults.code;
-    const langLabel = { rust: "Rust", typescript: "TypeScript", python: "Python", go: "Go", java: "Java", csharp: "C#", swift: "Swift" }[lang] || lang;
-    codegenOutputEl.innerHTML =
-      `<div class="codegen-header"><span class="codegen-filename">${escapeHtml(filename)}</span><span class="codegen-lang-label">${langLabel}</span></div>` +
-      `<pre class="codegen-code">${escapeHtml(code)}</pre>`;
+    codegenOutputEl.innerHTML = renderCodegenCode(codegenResults.code);
     codegenOutputEl.classList.remove("placeholder");
   } else if (tab === "openapi" && codegenResults.openapi) {
-    codegenOutputEl.innerHTML =
-      `<div class="codegen-header"><span class="codegen-filename">openapi.json</span><span class="codegen-lang-label">OpenAPI 3.0</span></div>` +
-      `<pre class="codegen-code">${escapeHtml(codegenResults.openapi)}</pre>`;
+    codegenOutputEl.innerHTML = renderCodegenOpenapi(codegenResults.openapi);
     codegenOutputEl.classList.remove("placeholder");
   } else {
     codegenOutputEl.innerHTML = '<span class="placeholder">Generate skeleton code or an OpenAPI spec from your intent file</span>';
   }
-}
-
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 init();
