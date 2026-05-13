@@ -1,3 +1,13 @@
 name = "intentlang-playground"
 pages_build_output_dir = "web"
 compatibility_date = "2024-01-01"
+
+# Per-client-IP rate limit applied by functions/api/[[path]].js.
+# 30 requests per 60s is generous for interactive use and prevents abuse
+# of the open proxy. namespace_id must be unique within the worker but is
+# otherwise arbitrary; bump if you add more ratelimit bindings.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }

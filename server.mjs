@@ -1,10 +1,13 @@
 // Local dev server with static file serving and AI API proxy.
-// The proxy forwards /api/* requests to the configured AI_API_BASE,
-// avoiding browser CORS restrictions during development.
+// The proxy forwards /api/* requests to the configured upstream, applying
+// the same allowlist as the Cloudflare Pages Function but with loopback
+// permitted so local Ollama / LM Studio / vLLM endpoints work.
 
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
+
+import { validateUpstream } from "./proxy-policy.mjs";
 
 const PORT = parseInt(process.env.PORT || "8080");
 const WEB_DIR = join(import.meta.dirname, "web");
@@ -46,12 +49,23 @@ async function serveStatic(req, res) {
   }
 }
 
-async function proxyApi(req, res, apiBase) {
-  // Strip /api prefix and forward to the real API
-  const targetPath = req.url.replace(/^\/api/, "");
-  const targetUrl = `${apiBase}${targetPath}`;
+function writeJson(res, status, body, extraHeaders = {}) {
+  res.writeHead(status, { "Content-Type": "application/json", ...extraHeaders });
+  res.end(JSON.stringify(body));
+}
 
-  // Read request body
+async function proxyApi(req, res, apiBase) {
+  const targetPath = req.url.replace(/^\/api/, "");
+  const candidate = `${apiBase.replace(/\/$/, "")}${targetPath}`;
+
+  // Allow loopback so local model servers (Ollama, LM Studio, vLLM) work.
+  // The hosted Cloudflare Function uses allowLoopback=false.
+  const check = validateUpstream(candidate, { allowLoopback: true });
+  if (!check.ok) {
+    writeJson(res, 400, { error: `upstream rejected: ${check.reason}` });
+    return;
+  }
+
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
   const body = Buffer.concat(chunks);
@@ -64,7 +78,7 @@ async function proxyApi(req, res, apiBase) {
   headers["content-length"] = body.length;
 
   try {
-    const response = await fetch(targetUrl, {
+    const response = await fetch(check.url.toString(), {
       method: req.method,
       headers,
       body: req.method !== "GET" && req.method !== "HEAD" ? body : undefined,
@@ -86,21 +100,20 @@ async function proxyApi(req, res, apiBase) {
     res.writeHead(response.status, responseHeaders);
     res.end(responseBody);
   } catch (e) {
-    res.writeHead(502);
-    res.end(JSON.stringify({ error: `Proxy error: ${e.message}` }));
+    writeJson(res, 502, { error: `Proxy error: ${e.message}` });
   }
 }
 
 const server = createServer(async (req, res) => {
   if (req.url.startsWith("/api/")) {
-    // Read target from X-Api-Base header (set by browser), fall back to env var
     const apiBase = req.headers["x-api-base"] || process.env.AI_API_BASE;
     if (!apiBase) {
-      res.writeHead(503);
-      res.end(JSON.stringify({ error: "No API base configured. Enter your API URL in the settings (gear icon)." }));
+      writeJson(res, 503, {
+        error: "No API base configured. Enter your API URL in the settings (gear icon).",
+      });
       return;
     }
-    await proxyApi(req, res, apiBase.replace(/\/$/, ""));
+    await proxyApi(req, res, apiBase);
   } else {
     await serveStatic(req, res);
   }
@@ -109,4 +122,5 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`IntentLang Playground: http://localhost:${PORT}`);
   console.log(`  AI proxy: /api/* (reads target from X-Api-Base header or AI_API_BASE env)`);
+  console.log(`  Dev mode: localhost upstreams allowed (Ollama, LM Studio, vLLM)`);
 });
